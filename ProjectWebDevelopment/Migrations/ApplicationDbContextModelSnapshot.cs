@@ -213,6 +213,105 @@ namespace ProjectWebDevelopment.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("ProjectWebDevelopment.Data.Entities.Auction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AuctionItemId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("MinimumBid")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("SellerId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuctionItemId")
+                        .IsUnique();
+
+                    b.HasIndex("SellerId");
+
+                    b.ToTable("Auctions");
+                });
+
+            modelBuilder.Entity("ProjectWebDevelopment.Data.Entities.AuctionItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AuctionItems");
+                });
+
+            modelBuilder.Entity("ProjectWebDevelopment.Data.Entities.Bid", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AuctionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("BuyerId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("Price")
+                        .HasColumnType("REAL");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuctionId");
+
+                    b.HasIndex("BuyerId");
+
+                    b.ToTable("Bids");
+                });
+
+            modelBuilder.Entity("ProjectWebDevelopment.Data.Entities.Image", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AuctionItemId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuctionItemId");
+
+                    b.ToTable("Images");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -262,6 +361,64 @@ namespace ProjectWebDevelopment.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("ProjectWebDevelopment.Data.Entities.Auction", b =>
+                {
+                    b.HasOne("ProjectWebDevelopment.Data.Entities.AuctionItem", "AuctionItem")
+                        .WithOne("Auction")
+                        .HasForeignKey("ProjectWebDevelopment.Data.Entities.Auction", "AuctionItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "Seller")
+                        .WithMany()
+                        .HasForeignKey("SellerId");
+
+                    b.Navigation("AuctionItem");
+
+                    b.Navigation("Seller");
+                });
+
+            modelBuilder.Entity("ProjectWebDevelopment.Data.Entities.Bid", b =>
+                {
+                    b.HasOne("ProjectWebDevelopment.Data.Entities.Auction", "Auction")
+                        .WithMany("Bids")
+                        .HasForeignKey("AuctionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "Buyer")
+                        .WithMany()
+                        .HasForeignKey("BuyerId");
+
+                    b.Navigation("Auction");
+
+                    b.Navigation("Buyer");
+                });
+
+            modelBuilder.Entity("ProjectWebDevelopment.Data.Entities.Image", b =>
+                {
+                    b.HasOne("ProjectWebDevelopment.Data.Entities.AuctionItem", "AuctionItem")
+                        .WithMany("Images")
+                        .HasForeignKey("AuctionItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AuctionItem");
+                });
+
+            modelBuilder.Entity("ProjectWebDevelopment.Data.Entities.Auction", b =>
+                {
+                    b.Navigation("Bids");
+                });
+
+            modelBuilder.Entity("ProjectWebDevelopment.Data.Entities.AuctionItem", b =>
+                {
+                    b.Navigation("Auction")
+                        .IsRequired();
+
+                    b.Navigation("Images");
                 });
 #pragma warning restore 612, 618
         }
