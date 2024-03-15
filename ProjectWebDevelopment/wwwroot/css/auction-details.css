@@ -1,0 +1,18 @@
+﻿#auctionCarouselControls .carousel-control-next-icon,
+#auctionCarouselControls .carousel-control-prev-icon {
+    background-color: var(--bs-secondary);
+    width:3rem;
+    height:3rem;
+    border-radius:0.5em;
+    background-size:50% 50%;
+}
+
+#auctionCarouselControls .carousel-inner {
+    border-radius: 0.5em;
+}
+
+#auctionCarouselControls img {
+    width:100%;
+    aspect-ratio:4/3;
+    object-fit:cover;
+}

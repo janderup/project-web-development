@@ -8,48 +8,51 @@
     <link rel="stylesheet" href="~/css/auction-list.css" />
 }
 
-<div class="d-flex justify-content-between align-items-center py-1">
-    <h1>Alle veilingen</h1>
+<section class="pt-5 pb-1">
+    <div class="d-flex justify-content-between align-items-center">
+        <h1>Alle veilingen</h1>
 
-    <div>
-        <a asp-action="Create" class="btn btn-primary">Nieuwe veiling</a>
+        <div>
+            <a asp-action="Create" class="btn btn-primary">Nieuwe veiling</a>
+        </div>
     </div>
-</div>
 
-<hr />
+    <hr />
+</section>
+    <section class="pb-5">
+    <ul class="auctions-list list-unstyled mt-3">
+        @foreach (var item in Model.Auctions)
+        {
+            <li class="auction-item row my-4">
+                <div class="col-5 col-md-4 d-flex flex-column justify-content-center">
+                    <img src="@Html.DisplayFor(modelItem => item.ImagePath)" class="auction-image" />
+                </div>
+                <div class="col-7 col-md-8 d-flex flex-column justify-content-center">
+                    <h2>@Html.DisplayFor(modelItem => item.Title)</h2>
+                    @if (item.HighestBid == null)
+                    {
+                        <p>Nog geen biedingen.</p>
+                    }
+                    else
+                    {
+                        <p>Hoogste bod: &euro; @Html.DisplayFor(modelItem => item.HighestBid)</p>
+                    }
+                    <div class="auction-countdown-wrapper">
+                        <div class="bg-light d-inline-block py-2 px-5 rounded">
+                            <auction-countdown end-date="@Html.DisplayFor(modelItem => item.EndDate)"></auction-countdown>
+                        </div>
+                    </div>
 
-<ul class="auctions-list list-unstyled mt-3">
-    @foreach (var item in Model.Auctions)
-    {
-        <li class="auction-item row my-4">
-            <div class="col-5 col-md-4 d-flex flex-column justify-content-center">
-                <img src="@Html.DisplayFor(modelItem => item.ImagePath)" class="auction-image" />
-            </div>
-            <div class="col-7 col-md-8 d-flex flex-column justify-content-center">
-                <h2>@Html.DisplayFor(modelItem => item.Title)</h2>
-                @if (item.HighestBid == null)
-                {
-                    <p>Nog geen biedingen.</p>
-                }
-                else
-                {
-                    <p>Hoogste bod: &euro; @Html.DisplayFor(modelItem => item.HighestBid)</p>
-                }
-                <div class="auction-countdown-wrapper">
-                    <div class="bg-light d-inline-block py-2 px-5 rounded">
-                        <auction-countdown end-date="@Html.DisplayFor(modelItem => item.EndDate)"></auction-countdown>
+                    <div class="actions-wrapper mt-3">
+                        <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
+                        <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
+                        <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
                     </div>
                 </div>
-
-                <div class="actions-wrapper mt-3">
-                    <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
-                    <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
-                    <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
-                </div>
-            </div>
-        </li>
-    }
-</ul>
+            </li>
+        }
+    </ul>
+</section>
 
 @section Scripts {
     <script src="~/js/elements/auction-countdown.js"></script>

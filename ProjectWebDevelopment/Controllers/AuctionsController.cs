@@ -76,7 +76,9 @@ namespace ProjectWebDevelopment.Controllers
                 return NotFound();
             }
 
-            return View(auction);
+            var detailsViewModel = new AuctionDetailsViewModel(auction, _signInManager);
+
+            return View(detailsViewModel);
         }
 
         // GET: Auctions/Create
