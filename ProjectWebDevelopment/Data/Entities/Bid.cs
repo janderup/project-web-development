@@ -12,6 +12,8 @@ namespace ProjectWebDevelopment.Data.Entities
 
         public Auction? Auction { get; set; }
         
-        public IdentityUser Buyer { get; set; }
+        public string BuyerId { get; set; }
+
+        public AuctionUser? Buyer { get; set; }
     }
 }

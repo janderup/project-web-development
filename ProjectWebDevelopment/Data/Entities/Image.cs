@@ -4,8 +4,8 @@
     {
         public string Path { get; set; }
 
-        public AuctionItem? AuctionItem { get; set; }
+        public Auction? Auction { get; set; }
 
-        public int AuctionItemId { get; set; }
+        public int AuctionId { get; set; }
     }
 }
