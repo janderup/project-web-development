@@ -18,27 +18,46 @@ namespace ProjectWebDevelopment.Controllers
     {
         private readonly ApplicationDbContext _context;
 
+        private readonly SignInManager<AuctionUser> _signInManager;
+
         private readonly UserManager<AuctionUser> _userManager;
 
         private readonly IAuctionImageProcessor _imageProcessor;
 
         public AuctionsController(
             ApplicationDbContext context, 
+            SignInManager<AuctionUser> signInManager,
             UserManager<AuctionUser> userManager, 
             IAuctionImageProcessor imageProcessor
             )
         {
             _context = context;
+            _signInManager = signInManager;
             _userManager = userManager;
             _imageProcessor = imageProcessor;
         }
 
-        // GET: Auctions
         public async Task<IActionResult> Index()
         {
-            var applicationDbContext = _context.Auctions.Include(a => a.Seller);
-            return View(await applicationDbContext.ToListAsync());
+            var auctions = await _context.Auctions
+                .Include(a => a.Images)
+                .OrderByDescending(a => a.EndDate)
+                .ToListAsync();
+
+            var auctionViewModels = auctions.Select(auction => new AuctionListItemViewModel
+            {
+                Id = auction.Id,
+                Title = auction.Title,
+                ImagePath = auction.Images != null && auction.Images.Any() ? auction.Images.First().Path : "~/images/fallback.jpg",
+                HighestBid = auction.Bids != null && auction.Bids.Any() ? auction.Bids.Max(b => b.Price) : null,
+                EndDate = auction.EndDate
+            });
+
+            var viewModel = new AuctionsListViewModel(auctionViewModels, _signInManager);
+
+            return View(viewModel);
         }
+
 
         // GET: Auctions/Details/5
         public async Task<IActionResult> Details(int? id)
