@@ -1,0 +1,59 @@
+﻿@model ProjectWebDevelopment.Models.AuctionDetailsViewModel
+
+@{
+    ViewData["Title"] = "Details";
+}
+
+@section Head {
+    <link rel="stylesheet" href="~/css/auction-details.css" />
+}
+
+<section class="py-5">
+    <div class="row">
+        <div class="col-lg">
+            <div id="auctionCarouselControls" class="carousel slide" data-bs-ride="carousel">
+                <div class="carousel-inner">
+                    @if (Model.Auction.Images != null)
+                    {
+                        @foreach (var image in Model.Auction.Images)
+                        {
+                            <div class="carousel-item @(image == Model.Auction.Images.First() ? "active" : "")">
+                                <img src="@image.Path" class="d-block img-fluid" alt="Afbeelding">
+                            </div>
+                        }
+                    }
+                </div>
+                <button class="carousel-control-prev" type="button" data-bs-target="#auctionCarouselControls" data-bs-slide="prev">
+                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Vorige</span>
+                </button>
+                <button class="carousel-control-next" type="button" data-bs-target="#auctionCarouselControls" data-bs-slide="next">
+                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Volgende</span>
+                </button>
+            </div>
+        </div>
+        <div class="col-lg">
+            <div>
+                <a asp-action="Edit" asp-route-id="@Model?.Auction.Id">Edit</a> |
+                <a asp-action="Index">Back to List</a>
+            </div>
+
+            <h1>@Html.DisplayFor(model => Model.Auction.Title)</h1>
+            <small>Aangeboden door <strong>@Html.DisplayFor(modelItem => Model.Auction.Seller.UserName)</strong></small>
+
+            <p class="my-3">@Html.DisplayFor(model => Model.Auction.Description)</p>
+
+            <div class="auction-countdown-wrapper">
+                <h2>Veiling sluit over</h2>
+                <div class="bg-light d-inline-block py-2 px-5 rounded">
+                    <auction-countdown end-date="@Html.DisplayFor(modelItem => Model.Auction.EndDate)"></auction-countdown>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <script src="~/js/elements/auction-countdown.js"></script>
+}

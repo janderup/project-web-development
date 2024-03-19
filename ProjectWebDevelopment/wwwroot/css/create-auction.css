@@ -1,0 +1,18 @@
+﻿auction-image-preview {
+    display:inline-block;
+    position: relative;
+    max-width: 200px;
+}
+
+auction-image-preview img {
+    width:100%;
+    height:auto;
+}
+
+auction-image-preview .actions {
+    position:absolute;
+    right:0;
+    z-index:2;
+    background-color:white;
+    padding:0.5em;
+}
