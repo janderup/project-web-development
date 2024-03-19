@@ -22,19 +22,19 @@ namespace ProjectWebDevelopment.Controllers
 
         private readonly UserManager<AuctionUser> _userManager;
 
-        private readonly IAuctionImageProcessor _imageProcessor;
+        private readonly AuctionService _auctionService;
 
         public AuctionsController(
             ApplicationDbContext context, 
             SignInManager<AuctionUser> signInManager,
             UserManager<AuctionUser> userManager, 
-            IAuctionImageProcessor imageProcessor
+            AuctionService auctionService
             )
         {
             _context = context;
             _signInManager = signInManager;
             _userManager = userManager;
-            _imageProcessor = imageProcessor;
+            _auctionService = auctionService;
         }
 
         public async Task<IActionResult> Index()
@@ -82,10 +82,11 @@ namespace ProjectWebDevelopment.Controllers
         }
 
         // GET: Auctions/Create
+        [Authorize(Roles = "Seller")]
         public IActionResult Create()
         {
-            ViewData["SellerId"] = new SelectList(_context.Users, "Id", "Id");
-            return View();
+            var viewModel = new CreateAuctionViewModel();
+            return View(viewModel);
         }
 
         // POST: Auctions/Create
@@ -93,47 +94,29 @@ namespace ProjectWebDevelopment.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize]
-        public async Task<IActionResult> Create([Bind("EndDate,Title,Description,MinimumBid,Images,Id")] CreateAuctionViewModel auctionViewModel)
+        [Authorize(Roles = "Seller")]
+        public async Task<IActionResult> Create([Bind("AuctionDuration,Title,Description,MinimumBid,Images,Id")] CreateAuctionViewModel auctionViewModel)
         {
             if (ModelState.IsValid)
             {
-                using var transaction = _context.Database.BeginTransaction();
+                var endDate = DateTime.Now;
+                endDate = endDate.Add(auctionViewModel.AuctionDuration.ToTimeSpan());
+
+                Auction auction = new()
+                {
+                    StartDate = DateTime.Now,
+                    EndDate = endDate,
+                    Title = auctionViewModel.Title,
+                    Description = auctionViewModel.Description,
+                    MinimumBid = auctionViewModel.MinimumBid,
+                    SellerId = _userManager.GetUserId(this.User)
+                };
 
                 try
                 {
-                    Auction auction = new()
-                    {
-                        StartDate = DateTime.Now,
-                        EndDate = auctionViewModel.EndDate,
-                        Title = auctionViewModel.Title,
-                        Description = auctionViewModel.Description,
-                        MinimumBid = auctionViewModel.MinimumBid,
-                        SellerId = _userManager.GetUserId(this.User)
-                    };
-                    _context.Add(auction);
-
-                    await _context.SaveChangesAsync();
-
-                    if (auctionViewModel.Images != null)
-                    {
-                        foreach (var image in auctionViewModel.Images)
-                        {
-                            Image auctionImage = new()
-                            {
-                                Path = _imageProcessor.ProcessUploadedImage(image),
-                                AuctionId = auction.Id
-                            };
-                            _context.Add(auctionImage);
-                        }
-                    }
-
-                    await _context.SaveChangesAsync();
-                    await transaction.CommitAsync();
-                    
-                } catch  (Exception)
+                    await _auctionService.CreateAuction(auction, auctionViewModel.Images);
+                } catch (Exception)
                 {
-                    await transaction.RollbackAsync();
                     throw;
                 }
 
@@ -144,6 +127,7 @@ namespace ProjectWebDevelopment.Controllers
         }
 
         // GET: Auctions/Edit/5
+        [Authorize(Roles = "Seller")]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
