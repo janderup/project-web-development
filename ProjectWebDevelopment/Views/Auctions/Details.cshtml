@@ -72,12 +72,12 @@
                 } else if (User.IsInRole("Buyer")) 
                 {
                     <h2 class="h3">Bod plaatsen</h2>
-                    <form>
+                    <form asp-action="PlaceBid" asp-route-id="@Model?.Auction.Id">
                         <div class="row">
                             <div class="col">
                                 <div class="input-group">
                                     <span class="input-group-text" id="bidAddon">&euro;</span>
-                                    <input type="number" class="form-control" aria-label="Bedrag" aria-describedby="bidAddon">
+                                    <input type="number" name="price" class="form-control" aria-label="Bedrag" aria-describedby="bidAddon">
                                 </div>
                             </div>
                             <div class="col">

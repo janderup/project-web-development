@@ -18,6 +18,7 @@ builder.Services.AddDefaultIdentity<AuctionUser>(options => options.SignIn.Requi
 builder.Services.AddControllersWithViews();
 
 builder.Services.AddScoped<IAuctionImageProcessor, Base64AuctionImageProcessor>();
+builder.Services.AddScoped<IAuctionRepository, AuctionRepositoryEF>();
 builder.Services.AddScoped<AuctionService, AuctionService>();
 
 var app = builder.Build();

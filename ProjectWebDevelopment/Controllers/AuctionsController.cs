@@ -16,8 +16,6 @@ namespace ProjectWebDevelopment.Controllers
 {
     public class AuctionsController : Controller
     {
-        private readonly ApplicationDbContext _context;
-
         private readonly SignInManager<AuctionUser> _signInManager;
 
         private readonly UserManager<AuctionUser> _userManager;
@@ -25,13 +23,11 @@ namespace ProjectWebDevelopment.Controllers
         private readonly AuctionService _auctionService;
 
         public AuctionsController(
-            ApplicationDbContext context, 
             SignInManager<AuctionUser> signInManager,
             UserManager<AuctionUser> userManager, 
             AuctionService auctionService
             )
         {
-            _context = context;
             _signInManager = signInManager;
             _userManager = userManager;
             _auctionService = auctionService;
@@ -39,11 +35,13 @@ namespace ProjectWebDevelopment.Controllers
 
         public async Task<IActionResult> Index()
         {
-            var auctions = await _context.Auctions
-                .Include(a => a.Images)
-                .OrderByDescending(a => a.EndDate)
-                .ToListAsync();
+            // var auctions = await _context.Auctions
+            //     .Include(a => a.Images)
+            //     .OrderByDescending(a => a.EndDate)
+            //     .ToListAsync();
 
+            var auctions = await _auctionService.GetAuctions();
+            
             var auctionViewModels = auctions.Select(auction => new AuctionListItemViewModel
             {
                 Id = auction.Id,
@@ -67,10 +65,8 @@ namespace ProjectWebDevelopment.Controllers
                 return NotFound();
             }
 
-            var auction = await _context.Auctions
-                .Include(a => a.Seller)
-                .Include(a => a.Images)
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var auction = await _auctionService.GetAuctionById(id.Value);
+            
             if (auction == null)
             {
                 return NotFound();
@@ -115,14 +111,16 @@ namespace ProjectWebDevelopment.Controllers
                 try
                 {
                     await _auctionService.CreateAuction(auction, auctionViewModel.Images);
-                } catch (Exception)
-                {
-                    throw;
+                    return RedirectToAction(nameof(Index));
                 }
-
-                return RedirectToAction(nameof(Index));
+                catch (Exception ex)
+                {
+                    // Handle the exception here
+                    ModelState.AddModelError(string.Empty, ex.Message); // Add error message to ModelState
+                }
             }
-            ViewData["SellerId"] = new SelectList(_context.Users, "Id", "Id");
+
+            ViewData["SellerId"] = new SelectList(_userManager.Users, "Id", "Id");
             return View(auctionViewModel);
         }
 
@@ -135,12 +133,12 @@ namespace ProjectWebDevelopment.Controllers
                 return NotFound();
             }
 
-            var auction = await _context.Auctions.FindAsync(id);
+            var auction = await _auctionService.GetAuctionById(id.Value);
             if (auction == null)
             {
                 return NotFound();
             }
-            ViewData["SellerId"] = new SelectList(_context.Users, "Id", "Id", auction.SellerId);
+            ViewData["SellerId"] = new SelectList(_userManager.Users, "Id", "Id", auction.SellerId);
             return View(auction);
         }
 
@@ -160,8 +158,7 @@ namespace ProjectWebDevelopment.Controllers
             {
                 try
                 {
-                    _context.Update(auction);
-                    await _context.SaveChangesAsync();
+                    await _auctionService.UpdateAuction(auction);
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -176,7 +173,7 @@ namespace ProjectWebDevelopment.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["SellerId"] = new SelectList(_context.Users, "Id", "Id", auction.SellerId);
+            ViewData["SellerId"] = new SelectList(_userManager.Users, "Id", "Id", auction.SellerId);
             return View(auction);
         }
 
@@ -188,9 +185,8 @@ namespace ProjectWebDevelopment.Controllers
                 return NotFound();
             }
 
-            var auction = await _context.Auctions
-                .Include(a => a.Seller)
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var auction = await _auctionService.GetAuctionById(id.Value);
+            
             if (auction == null)
             {
                 return NotFound();
@@ -204,19 +200,37 @@ namespace ProjectWebDevelopment.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var auction = await _context.Auctions.FindAsync(id);
+            var auction = await _auctionService.GetAuctionById(id);
+            
             if (auction != null)
             {
-                _context.Auctions.Remove(auction);
+                await _auctionService.DeleteAuction(auction);
             }
-
-            await _context.SaveChangesAsync();
+            
             return RedirectToAction(nameof(Index));
         }
 
         private bool AuctionExists(int id)
         {
-            return _context.Auctions.Any(e => e.Id == id);
+            return _auctionService.AuctionExists(id);
+        }
+
+        [HttpPost, ActionName("PlaceBid")]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Buyer")]
+        public async Task<IActionResult> PlaceBid(int id, [Bind("price")] double price)
+        {
+            var bid = new Bid()
+            {
+                BuyerId = _userManager.GetUserId(this.User),
+                Price = price,
+                Date = DateTime.Now,
+                AuctionId = id
+            };
+
+            await _auctionService.PlaceBid(bid);
+
+            return RedirectToAction(nameof(Details), new { id = id });
         }
     }
 }
