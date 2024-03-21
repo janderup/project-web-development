@@ -102,7 +102,9 @@ namespace ProjectWebDevelopment.Services
         public async Task<List<Bid>> GetBids(int auctionId)
         {
             return await _context.Bids
+                .Include(bid => bid.Buyer)
                 .Where(bid => bid.AuctionId == auctionId)
+                .OrderByDescending(b => b.Price)
                 .ToListAsync();
         }
 

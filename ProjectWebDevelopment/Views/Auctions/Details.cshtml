@@ -1,4 +1,5 @@
-﻿@model ProjectWebDevelopment.Models.AuctionDetailsViewModel
+﻿@using Microsoft.EntityFrameworkCore.Metadata.Internal
+@model ProjectWebDevelopment.Models.AuctionDetailsViewModel
 
 @{
     ViewData["Title"] = "Details";
@@ -54,6 +55,12 @@
 
             <div class="current-biddings-wrapper my-5">
                 <h2 class="h3">Huidige biedingen</h2>
+                <ol class="list-unstyled" id="auctionBids">
+                    @foreach (var bid in Model.Bids)
+                    {
+                        <li><auction-bid name="@($"{bid?.Buyer?.FirstName} {bid?.Buyer?.LastName}")" price="@bid?.Price"></auction-bid></li>
+                    }
+                </ol>
             </div>
 
             <div class="my-5">
@@ -98,42 +105,8 @@
 </section>
 
 @section Scripts {
-    <script src="~/js/elements/auction-countdown.js"></script>
-    <script src="~/js/signalr/dist/browser/signalr.js"></script>
-
-    <script>
-        var connection = new signalR.HubConnectionBuilder()
-            .withUrl("/auctionhub")
-            .build();
-
-        connection.on("ReceiveBidUpdate", function (message) {
-            // Handle bid update, e.g., display a notification
-            console.log(message);
-        });
-
-        connection.start()
-            .then(function () {
-                console.log("SignalR connected.");
-                joinAuctionGroup(@Model?.Auction.Id);
-            })
-            .catch(function (err) {
-                console.error(err.toString());
-            });
-
-        // Join auction group when necessary, e.g., when entering auction details page
-        function joinAuctionGroup(auctionId) {
-            connection.invoke("JoinAuctionGroup", auctionId)
-                .catch(function (err) {
-                    console.error(err.toString());
-                });
-        }
-
-        // Leave auction group when necessary, e.g., when leaving auction details page
-        function leaveAuctionGroup(auctionId) {
-            connection.invoke("LeaveAuctionGroup", auctionId)
-                .catch(function (err) {
-                    console.error(err.toString());
-                });
-        }
+    <script >
+        window.auctionId = @Model?.Auction.Id;
     </script>
+    <script src="~/js/auction-details.js" type="module"></script>
 }

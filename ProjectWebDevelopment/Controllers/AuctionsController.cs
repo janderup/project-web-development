@@ -73,7 +73,9 @@ namespace ProjectWebDevelopment.Controllers
                 return NotFound();
             }
 
-            var detailsViewModel = new AuctionDetailsViewModel(auction, _signInManager);
+            var bids = await _auctionService.GetBids(id.Value);
+            
+            var detailsViewModel = new AuctionDetailsViewModel(auction, bids, _signInManager);
 
             return View(detailsViewModel);
         }

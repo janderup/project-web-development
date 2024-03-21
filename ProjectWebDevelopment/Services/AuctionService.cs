@@ -99,6 +99,11 @@ namespace ProjectWebDevelopment.Services
             return Repository.AuctionExists(id);
         }
 
+        public async Task<IEnumerable<Bid>> GetBids(int auctionId)
+        {
+            return await Repository.GetBids(auctionId);
+        }
+
         public async Task PlaceBid(Bid bid)
         {
             if (bid.Price < 0)
