@@ -1,4 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 using ProjectWebDevelopment.Data;
 using ProjectWebDevelopment.Data.Entities;
 
@@ -10,13 +13,21 @@ namespace ProjectWebDevelopment.Services
 
         private IAuctionImageProcessor ImageProcessor { get; }
 
+        private IHubContext<AuctionHub> HubContext { get; }
+
+        private UserManager<AuctionUser> UserManager { get; }
+
         public AuctionService(
             IAuctionRepository repository,
-            IAuctionImageProcessor imageProcessor
+            IAuctionImageProcessor imageProcessor,
+            IHubContext<AuctionHub> hubContext,
+            UserManager<AuctionUser> userManager
             )
         {
             Repository = repository;
             ImageProcessor = imageProcessor;
+            HubContext = hubContext;
+            UserManager = userManager;
         }
 
         public async Task<IEnumerable<Auction>> GetAuctions()
@@ -109,6 +120,26 @@ namespace ProjectWebDevelopment.Services
             }
 
             await Repository.CreateBid(bid);
+            await NotifyAuctionHub(bid);
+        }
+
+        public async Task NotifyAuctionHub(Bid bid)
+        {
+            // The buyer is not included at this point, so we must retrieve this from the user manager.
+            var buyer = await UserManager.FindByIdAsync(bid.BuyerId);
+
+            Dictionary<string, object> bidData = new()
+            {
+                { "Name", buyer?.FirstName + " " + buyer?.LastName },
+                { "Price", bid.Price },
+                { "Date", bid.Date }
+            };
+
+            string json = JsonConvert.SerializeObject(bidData, Formatting.Indented);
+
+            // Send the JSON string to the client
+            await HubContext.Clients.Group($"auction-{bid.AuctionId}")
+                .SendAsync("ReceiveBidUpdate", json);
         }
     }
 }

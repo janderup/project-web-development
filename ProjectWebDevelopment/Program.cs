@@ -21,6 +21,8 @@ builder.Services.AddScoped<IAuctionImageProcessor, Base64AuctionImageProcessor>(
 builder.Services.AddScoped<IAuctionRepository, AuctionRepositoryEF>();
 builder.Services.AddScoped<AuctionService, AuctionService>();
 
+builder.Services.AddSignalR();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -39,6 +41,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+app.MapHub<AuctionHub>("/auctionhub");
 
 app.UseAuthorization();
 
