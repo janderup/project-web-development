@@ -16,7 +16,7 @@ context('Window', () => {
 
   it('cy.title() - get the title', () => {
     // https://on.cypress.io/title
-    cy.title().should('include', 'Steen Papier Schaar');
+    cy.title().should('include', 'WieBiedt');
   })
 })
 
