@@ -86,6 +86,7 @@ namespace ProjectWebDevelopment.Services
         {
             return await _context.Auctions
                 .Include(a => a.Images)
+                .Include(a => a.Seller)
                 .FirstOrDefaultAsync(a => a.Id == id);
         }
 
