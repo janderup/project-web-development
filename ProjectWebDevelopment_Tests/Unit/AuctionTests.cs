@@ -117,16 +117,9 @@ public class AuctionTests
     public void CreateAuction_ValidData_NoExceptionThrown()
     {
         var auction = ScaffoldAuction("Lorem ipsum sit dolor amet", "Lorem ipsum sit dolor amet", null);
-        List<IFormFile> images = new();
-
-        var validFile = new Mock<IFormFile>();
-        validFile.Setup(image => image.Length).Returns(10);
-        validFile.Setup(image => image.FileName).Returns("HelloWorld.jpg");
-
-        images.Add(validFile.Object);
 
         // Assert that no exception is thrown
-        Assert.DoesNotThrowAsync(async () => await AuctionService.CreateAuction(auction, images));
+        Assert.DoesNotThrowAsync(async () => await AuctionService.CreateAuction(auction, GetValidImageList()));
     }
 
     [TestCase(null, -100)]
@@ -136,15 +129,7 @@ public class AuctionTests
     public async Task PlaceBid_InvalidPrice_ThrowsException(double? minimumBid, double bidPrice)
     {
         var auction = ScaffoldAuction("Lorem ipsum sit dolor amet", "Lorem ipsum sit dolor amet", minimumBid);
-        List<IFormFile> images = new();
-
-        var validFile = new Mock<IFormFile>();
-        validFile.Setup(image => image.Length).Returns(10);
-        validFile.Setup(image => image.FileName).Returns("HelloWorld.jpg");
-
-        images.Add(validFile.Object);
-
-        var auctionId = await AuctionService.CreateAuction(auction, images);
+        var auctionId = await AuctionService.CreateAuction(auction, GetValidImageList());
 
         var bid = new Bid()
         {
@@ -163,15 +148,7 @@ public class AuctionTests
     public async Task PlaceBid_LowerThanHighestBid_ThrowsException(double highestBid, double higherBid)
     {
         var auction = ScaffoldAuction("Lorem ipsum sit dolor amet", "Lorem ipsum sit dolor amet", null);
-        List<IFormFile> images = new();
-
-        var validFile = new Mock<IFormFile>();
-        validFile.Setup(image => image.Length).Returns(10);
-        validFile.Setup(image => image.FileName).Returns("HelloWorld.jpg");
-
-        images.Add(validFile.Object);
-
-        var auctionId = await AuctionService.CreateAuction(auction, images);
+        var auctionId = await AuctionService.CreateAuction(auction, GetValidImageList());
 
         var initialBid = new Bid()
         {
@@ -190,6 +167,25 @@ public class AuctionTests
         Assert.That(async () => await AuctionService.PlaceBid(newBid), Throws.InvalidOperationException);
     }
 
+    [Test]
+    public async Task PlaceBid_WhenAuctionHasEnded_ThrowsException()
+    {
+        var auction = ScaffoldAuction("Lorem ipsum sit dolor amet", "Lorem ipsum sit dolor amet", null);
+        auction.StartDate = DateTime.Now.AddDays(-2);
+        auction.EndDate = DateTime.Now.AddDays(-1);
+
+        var auctionId = await AuctionService.CreateAuction(auction, GetValidImageList());
+
+        var newBid = new Bid()
+        {
+            AuctionId = auctionId,
+            BuyerId = Guid.NewGuid().ToString(),
+            Price = 500
+        };
+
+        Assert.That(async () => await AuctionService.PlaceBid(newBid), Throws.InvalidOperationException);
+    }
+
     // Method used to quickly scaffold a new auction
     private static Auction ScaffoldAuction(string title, string description, double? minimumBid)
     {
@@ -204,5 +200,17 @@ public class AuctionTests
             Bids = null,
             SellerId = Guid.NewGuid().ToString()
         };
+    }
+
+    private static List<IFormFile> GetValidImageList()
+    {
+        List<IFormFile> images = new();
+
+        var validFile = new Mock<IFormFile>();
+        validFile.Setup(image => image.Length).Returns(10);
+        validFile.Setup(image => image.FileName).Returns("HelloWorld.jpg");
+
+        images.Add(validFile.Object);
+        return images;
     }
 }

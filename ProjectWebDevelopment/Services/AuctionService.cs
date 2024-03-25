@@ -35,9 +35,19 @@ namespace ProjectWebDevelopment.Services
             return await Repository.GetAuctions();
         }
 
+        public async Task<IEnumerable<Auction>> GetAuctionsWithBids()
+        {
+            return await Repository.GetAuctionsWithBids();
+        }
+
         public async Task<Auction?> GetAuctionById(int id)
         {
             return await Repository.GetAuctionById(id);
+        }
+
+        public async Task<Auction?> GetAuctionByIdWithBids(int id)
+        {
+            return await Repository.GetAuctionByIdWithBids(id);
         }
 
         public async Task<int> CreateAuction(Auction auction, IEnumerable<IFormFile> images)
@@ -45,36 +55,36 @@ namespace ProjectWebDevelopment.Services
             // Validate the maximum length of an auction title
             if (auction.Title.Length > AuctionServiceSettings.MaxTitleLength)
                 throw new InvalidOperationException(
-                    $"The title of an auction may not be greater than {AuctionServiceSettings.MaxTitleLength} characters.");
+                    $"De titel van de veiling mag niet groter zijn dan {AuctionServiceSettings.MaxTitleLength} karakters.");
 
             // Validate the maximum length of an auction description
             if (auction.Description.Length > AuctionServiceSettings.MaxDescriptionLength)
                 throw new InvalidOperationException(
-                    $"The description of an auction may not be greater than {AuctionServiceSettings.MaxDescriptionLength} characters.");
+                    $"De beschrijving van de veiling mag niet groter zijn dan {AuctionServiceSettings.MaxDescriptionLength} karakters.");
 
             // Validate the minimum bid when filled in
             if (auction.MinimumBid != null 
                 && (auction.MinimumBid < AuctionServiceSettings.MinMinimumBid || auction.MinimumBid > AuctionServiceSettings.MaxMinimumBid))
                 throw new InvalidOperationException(
-                    $"The minimum bid of an auction must be between &euro; {AuctionServiceSettings.MinMinimumBid} and &euro; {AuctionServiceSettings.MaxMinimumBid}.");
+                    $"Het minimumbod van de veiling moet liggen tussen de &euro; {AuctionServiceSettings.MinMinimumBid} en &euro; {AuctionServiceSettings.MaxMinimumBid}.");
             
             var imageList = images.ToList();
             
             // Check if the number of images uploaded is valid.
             if (imageList.Count < AuctionServiceSettings.MinImageCountPerAuction || imageList.Count > AuctionServiceSettings.MaxImageCountPerAuction)
                 throw new InvalidOperationException(
-                    $"You must upload between {AuctionServiceSettings.MinImageCountPerAuction} and {AuctionServiceSettings.MaxImageCountPerAuction} images per auction.");
+                    $"Je moet tussen de {AuctionServiceSettings.MinImageCountPerAuction} en {AuctionServiceSettings.MaxImageCountPerAuction} afbeeldingen gebruiken per veiling.");
     
             foreach (var imageFile in imageList)
             {
                 // Length is measured in bytes. 1024x1024 represents the size in Megabytes.
                 if (imageFile.Length > AuctionServiceSettings.MaxMegabytesPerImage * 1024 * 1024)
-                    throw new InvalidOperationException("Image size must be less than 2 megabytes.");
+                    throw new InvalidOperationException($"Elke afbeelding mag niet groter zijn dan {AuctionServiceSettings.MaxMegabytesPerImage} megabytes.");
 
                 // Check if the file extensions are supported
                 var extension = Path.GetExtension(imageFile.FileName).ToLowerInvariant();
                 if (!AuctionServiceSettings.AllowedFileExtensions.Contains(extension))
-                    throw new InvalidOperationException("The image file extension is not supported.");
+                    throw new InvalidOperationException("Het type bestand van één of meerdere afbeeldingen wordt niet ondersteund.");
             }
 
             var imageSources = imageList.Select(imageSource => ImageProcessor.ProcessUploadedImage(imageSource));
@@ -89,9 +99,20 @@ namespace ProjectWebDevelopment.Services
         public async Task DeleteAuction(Auction auction)
         {
             if (auction.Bids != null && auction.Bids.Any())
-                throw new InvalidOperationException("You may not delete an auction that has bids.");
+                throw new InvalidOperationException("Je mag geen veiling annuleren die al biedingen heeft.");
             
             await Repository.DeleteAuction(auction.Id);
+        }
+
+        public bool CanAuctionBeCancelled(Auction auction)
+        {
+            if (auction.HasEnded())
+                return false;
+
+            if (auction.Bids != null && auction.Bids.Any())
+                return false;
+
+            return true;
         }
 
         public bool AuctionExists(int id)
@@ -107,13 +128,16 @@ namespace ProjectWebDevelopment.Services
         public async Task PlaceBid(Bid bid)
         {
             if (bid.Price <= 0)
-                throw new InvalidOperationException("The bid may not be lower than or equal to &euro; 0.");
+                throw new InvalidOperationException("Het bod mag niet gelijk zijn of kleiner dan &euro; 0.");
 
             var auction = await Repository.GetAuctionById(bid.AuctionId) 
-                ?? throw new InvalidOperationException("The auction ID is invalid. The auction does not exist.");
+                ?? throw new InvalidOperationException("Het veiling ID is ongeldig. De veiling bestaat niet.");
 
             if (bid.Price < auction.MinimumBid)
-                throw new InvalidOperationException("The bid may not be lower than the minimum bid of the auction.");
+                throw new InvalidOperationException("Het bod mag niet lager zijn dan het minimumbod van de veiling.");
+
+            if (auction.HasEnded())
+                throw new InvalidOperationException("Je mag geen bieding plaatsen op een veiling die al is afgelopen.");
 
             var bids = await Repository.GetBids(bid.AuctionId);
 
@@ -121,13 +145,27 @@ namespace ProjectWebDevelopment.Services
             {
                 var highestBidPrice = bids.Max(b => b.Price);
                 if (bid.Price <= highestBidPrice)
-                    throw new InvalidOperationException("The bid must be higher than the current highest bid.");
+                    throw new InvalidOperationException("Het bod moet hoger zijn dan het huidige hoogste bod.");
             }
 
             await Repository.CreateBid(bid);
 
             if (HubContext != null)
                 await NotifyAuctionHub(bid);
+        }
+
+        // Returns the next minimum bid that is accepted for this auction.
+        // Note: auction.Bids must be initialized before using this method.
+        public double GetNextMinimumBid(Auction auction)
+        {
+            if (auction.Bids == null)
+                throw new ArgumentException("Auction bids are null. Bids must be initialized before determaining the next minimum bid.");
+
+            if (!auction.Bids.Any())
+                return auction.MinimumBid ?? 0.01;
+
+            var highestBid = auction.Bids.Max(bid => bid.Price);
+            return Math.Round(highestBid + 0.01, 2);
         }
 
         public async Task NotifyAuctionHub(Bid bid)
@@ -139,7 +177,8 @@ namespace ProjectWebDevelopment.Services
             {
                 { "Name", buyer?.FirstName + " " + buyer?.LastName },
                 { "Price", bid.Price },
-                { "Date", bid.Date }
+                { "Date", bid.Date },
+                { "NextMinimum", Math.Round(bid.Price + 0.01, 2) }
             };
 
             string json = JsonConvert.SerializeObject(bidData, Formatting.Indented);

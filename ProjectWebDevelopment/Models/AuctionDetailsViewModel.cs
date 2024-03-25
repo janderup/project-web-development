@@ -6,16 +6,23 @@ namespace ProjectWebDevelopment.Models
     public class AuctionDetailsViewModel
     {
         public Auction Auction { get; set; }
-        
-        public IEnumerable<Bid> Bids { get; set; }
 
         public SignInManager<AuctionUser> SignInManager { get; set; }
 
-        public AuctionDetailsViewModel(Auction auction, IEnumerable<Bid> bids, SignInManager<AuctionUser> signInManager)
+        public bool CanAuctionBeCancelled { get; set; }
+
+        public double NextMinimumBid { get; set; }
+
+        public AuctionDetailsViewModel(
+            Auction auction, SignInManager<AuctionUser> signInManager, 
+            bool canAuctionBeCancelled, 
+            double nextMinimumBid
+            )
         {
             this.Auction = auction;
-            this.Bids = bids;
             this.SignInManager = signInManager;
+            this.CanAuctionBeCancelled = canAuctionBeCancelled;
+            this.NextMinimumBid = nextMinimumBid;
         }
     }
 }

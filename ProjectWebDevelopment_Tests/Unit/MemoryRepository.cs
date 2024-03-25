@@ -86,4 +86,14 @@ public class MemoryRepository : IAuctionRepository
         _bids.RemoveAt(indexOf);
         return Task.FromResult(1);
     }
+
+    public Task<IEnumerable<Auction>> GetAuctionsWithBids()
+    {
+        return Task.FromResult<IEnumerable<Auction>>(_auctions);
+    }
+
+    public Task<Auction?> GetAuctionByIdWithBids(int id)
+    {
+        return GetAuctionById(id);
+    }
 }

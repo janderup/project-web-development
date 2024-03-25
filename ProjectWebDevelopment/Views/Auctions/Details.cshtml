@@ -24,14 +24,17 @@
                         }
                     }
                 </div>
-                <button class="carousel-control-prev" type="button" data-bs-target="#auctionCarouselControls" data-bs-slide="prev">
-                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                    <span class="visually-hidden">Vorige</span>
-                </button>
-                <button class="carousel-control-next" type="button" data-bs-target="#auctionCarouselControls" data-bs-slide="next">
-                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                    <span class="visually-hidden">Volgende</span>
-                </button>
+                @if (Model.Auction.Images != null && Model.Auction.Images.Count > 1)
+                {
+                    <button class="carousel-control-prev" type="button" data-bs-target="#auctionCarouselControls" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Vorige</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#auctionCarouselControls" data-bs-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Volgende</span>
+                    </button>
+                }
             </div>
         </div>
         <div class="col-lg">
@@ -56,9 +59,12 @@
             <div class="current-biddings-wrapper my-5">
                 <h2 class="h3">Huidige biedingen</h2>
                 <ol class="list-unstyled" id="auctionBids">
-                    @foreach (var bid in Model.Bids)
+                    @if(Model.Auction.Bids != null)
                     {
-                        <li><auction-bid name="@($"{bid?.Buyer?.FirstName} {bid?.Buyer?.LastName}")" price="@bid?.Price"></auction-bid></li>
+                        @foreach (var bid in Model.Auction.Bids)
+                        {
+                            <li><auction-bid name="@($"{bid?.Buyer?.FirstName} {bid?.Buyer?.LastName}")" price="@bid?.Price"></auction-bid></li>
+                        }
                     }
                 </ol>
             </div>
@@ -72,27 +78,41 @@
                             <a asp-action="Edit" asp-route-id="@Model?.Auction.Id" class="btn btn-primary btn-block w-100">Veiling bewerken</a>
                         </div>
                         <div class="col">
-                            <a asp-action="Delete" asp-route-id="@Model?.Auction.Id" class="btn btn-secondary btn-block w-100">Veiling annuleren</a>
+                            @if (Model.CanAuctionBeCancelled)
+                            {
+                                <a asp-action="Delete" asp-route-id="@Model?.Auction.Id" class="btn btn-secondary btn-block w-100">Veiling annuleren</a>
+                            }
                         </div>
                     </div>
 
                 } else if (User.IsInRole("Buyer")) 
                 {
                     <h2 class="h3">Bod plaatsen</h2>
-                    <form asp-action="PlaceBid" asp-route-id="@Model?.Auction.Id">
-                        <div class="row">
-                            <div class="col">
-                                <div class="input-group">
-                                    <span class="input-group-text" id="bidAddon">&euro;</span>
-                                    <input type="number" name="price" class="form-control" aria-label="Bedrag" aria-describedby="bidAddon">
+                        <form asp-action="PlaceBid" asp-route-id="@Model?.Auction.Id">
+                            @if (TempData["ErrorMessage"] != null)
+                            {
+                                <div class="alert alert-danger" role="alert">@TempData["ErrorMessage"]</div>
+                            }
+                            <div class="row">
+                                <div class="col">
+                                    <div class="input-group">
+                                        <span class="input-group-text" id="bidAddon">&euro;</span>
+                                        <input type="number"
+                                               min="0.01"
+                                               step="0.01"
+                                               name="price"
+                                               class="form-control"
+                                               aria-label="Bedrag"
+                                               aria-describedby="bidAddon">
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <button class="btn btn-primary w-100">Plaats bod</button>
                                 </div>
                             </div>
-                            <div class="col">
-                                <button class="btn btn-primary w-100">Plaats bod</button>
-                            </div>
-                        </div>
-                    </form>
-                    <small>Bied minimaal &euro; 0,00</small>
+                        </form>
+
+                    <small>Bied minimaal &euro; <span id="minimimBid">@Html.DisplayFor(model => model.NextMinimumBid)</span></small>
                 } else
                 {
                     <h2 class="h3">Bod plaatsen</h2>

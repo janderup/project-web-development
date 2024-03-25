@@ -6,7 +6,11 @@ namespace ProjectWebDevelopment.Services
     {
         Task<IEnumerable<Auction>> GetAuctions();
 
+        Task<IEnumerable<Auction>> GetAuctionsWithBids();
+
         Task<Auction?> GetAuctionById(int id);
+
+        Task<Auction?> GetAuctionByIdWithBids(int id);
 
         Task<int> CreateAuction(Auction auction, IEnumerable<string> imageSources);
 

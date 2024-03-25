@@ -90,9 +90,36 @@ namespace ProjectWebDevelopment.Services
                 .FirstOrDefaultAsync(a => a.Id == id);
         }
 
+        public async Task<Auction?> GetAuctionByIdWithBids(int id)
+        {
+            return await _context.Auctions
+                .Include(a => a.Images)
+                .Include(a => a.Seller)
+                .Include(a => a.Bids)
+                    .ThenInclude(b => b.Buyer)
+                .FirstOrDefaultAsync(a => a.Id == id)
+                .ContinueWith(auction =>
+                {
+                    if (auction.Result != null)
+                    {
+                        auction.Result.Bids = auction.Result.Bids.OrderByDescending(b => b.Price).ToList();
+                    }
+                    return auction.Result;
+                });
+        }
+
+
         public async Task<IEnumerable<Auction>> GetAuctions()
         {
             return await _context.Auctions.Include(a => a.Images).ToListAsync();
+        }
+
+        public async Task<IEnumerable<Auction>> GetAuctionsWithBids()
+        {
+            return await _context.Auctions
+                .Include(a => a.Images)
+                .Include(a => a.Bids)
+                .ToListAsync();
         }
 
         public async Task<Bid?> GetBidById(int id)

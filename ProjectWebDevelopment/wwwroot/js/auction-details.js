@@ -21,8 +21,14 @@ connection.on("ReceiveBidUpdate", function (message) {
     listItem.append(auctionBid);
     
     auctionBidsList.insertBefore(listItem, auctionBidsList.firstChild);
-    
-    console.log(message);
+
+    // Update the minimum bid
+    const nextMinimumElement = document.getElementById("minimimBid");
+    const nextMinimum = jsonData.NextMinimum;
+
+    if (nextMinimumElement) {
+        nextMinimumElement.innerHTML = nextMinimum;
+    }
 });
 
 connection.start()

@@ -37,12 +37,7 @@ namespace ProjectWebDevelopment.Controllers
 
         public async Task<IActionResult> Index()
         {
-            // var auctions = await _context.Auctions
-            //     .Include(a => a.Images)
-            //     .OrderByDescending(a => a.EndDate)
-            //     .ToListAsync();
-
-            var auctions = await _auctionService.GetAuctions();
+            var auctions = await _auctionService.GetAuctionsWithBids();
             
             var auctionViewModels = auctions.Select(auction => new AuctionListItemViewModel
             {
@@ -67,16 +62,17 @@ namespace ProjectWebDevelopment.Controllers
                 return NotFound();
             }
 
-            var auction = await _auctionService.GetAuctionById(id.Value);
+            var auction = await _auctionService.GetAuctionByIdWithBids(id.Value);
             
             if (auction == null)
             {
                 return NotFound();
             }
 
-            var bids = await _auctionService.GetBids(id.Value);
-            
-            var detailsViewModel = new AuctionDetailsViewModel(auction, bids, _signInManager);
+            var canBeCancelled = _auctionService.CanAuctionBeCancelled(auction);
+            var nextMinimumBid = _auctionService.GetNextMinimumBid(auction);
+
+            var detailsViewModel = new AuctionDetailsViewModel(auction, _signInManager, canBeCancelled, nextMinimumBid);
 
             return View(detailsViewModel);
         }
@@ -260,7 +256,14 @@ namespace ProjectWebDevelopment.Controllers
                 AuctionId = id
             };
 
-            await _auctionService.PlaceBid(bid);
+            try
+            {
+                await _auctionService.PlaceBid(bid);
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["ErrorMessage"] = ex.Message;
+            }
 
             return RedirectToAction(nameof(Details), new { id = id });
         }
