@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -101,6 +102,8 @@ namespace ProjectWebDevelopment.Controllers
                 var endDate = DateTime.Now;
                 endDate = endDate.Add(auctionViewModel.AuctionDuration.ToTimeSpan());
 
+                var user = await _userManager.GetUserAsync(this.User);
+
                 Auction auction = new()
                 {
                     StartDate = DateTime.Now,
@@ -108,12 +111,18 @@ namespace ProjectWebDevelopment.Controllers
                     Title = auctionViewModel.Title,
                     Description = auctionViewModel.Description,
                     MinimumBid = auctionViewModel.MinimumBid,
-                    SellerId = _userManager.GetUserId(this.User)
+                    SellerId = user.Id
                 };
 
                 try
                 {
-                    await _auctionService.CreateAuction(auction, auctionViewModel.Images);
+                    var auctionId = await _auctionService.CreateAuction(auction, auctionViewModel.Images);
+
+                    // Add claim for authentication
+                    var claim = new Claim("AuctionCreator", auctionId.ToString());
+                    await _userManager.AddClaimAsync(user, claim);
+                    await _signInManager.RefreshSignInAsync(user);
+
                     return RedirectToAction(nameof(Index));
                 }
                 catch (Exception ex)
@@ -136,6 +145,11 @@ namespace ProjectWebDevelopment.Controllers
                 return NotFound();
             }
 
+            if (User.Claims.FirstOrDefault(c => c.Type == "AuctionCreator" && c.Value == id.Value.ToString()) == null)
+            {
+                return Unauthorized();
+            }
+
             var auction = await _auctionService.GetAuctionById(id.Value);
             if (auction == null)
             {
@@ -155,6 +169,11 @@ namespace ProjectWebDevelopment.Controllers
             if (id != auction.Id)
             {
                 return NotFound();
+            }
+
+            if (User.Claims.FirstOrDefault(c => c.Type == "AuctionCreator" && c.Value == id.ToString()) == null)
+            {
+                return Unauthorized();
             }
 
             if (ModelState.IsValid)
@@ -195,6 +214,11 @@ namespace ProjectWebDevelopment.Controllers
                 return NotFound();
             }
 
+            if (User.Claims.FirstOrDefault(c => c.Type == "AuctionCreator" && c.Value == id.Value.ToString()) == null) 
+            {
+                return Unauthorized();
+            }
+
             return View(auction);
         }
 
@@ -203,6 +227,11 @@ namespace ProjectWebDevelopment.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
+            if (User.Claims.FirstOrDefault(c => c.Type == "AuctionCreator" && c.Value == id.ToString()) == null)
+            {
+                return Unauthorized();
+            }
+
             var auction = await _auctionService.GetAuctionById(id);
             
             if (auction != null)

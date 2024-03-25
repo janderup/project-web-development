@@ -34,7 +34,7 @@ namespace ProjectWebDevelopment.Services
 
                 var rowsAffected = await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
-                return rowsAffected;
+                return auction.Id;
 
             }
             catch (Exception)

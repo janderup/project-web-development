@@ -6,18 +6,18 @@ using ProjectWebDevelopment.Data.Entities;
 using ProjectWebDevelopment.Services;
 using System.Security.Cryptography;
 
-namespace ProjectWebDevelopment_Tests;
+namespace ProjectWebDevelopment_Tests.Unit;
 
 public class AuctionTests
 {
     private MemoryRepository Repository { get; set; }
-    
-    private Mock<IAuctionImageProcessor> ImageProcessorMock { get; set;  }
-    
-    private Mock<UserManager<AuctionUser>> UserManagerMock { get; set;  }
+
+    private Mock<IAuctionImageProcessor> ImageProcessorMock { get; set; }
+
+    private Mock<UserManager<AuctionUser>> UserManagerMock { get; set; }
 
     private AuctionService AuctionService { get; set; }
-    
+
     [SetUp]
     public void Setup()
     {
@@ -36,7 +36,7 @@ public class AuctionTests
         // Builds a string that is exactly 1 character longer than the max length.
         var title = new string('A', AuctionServiceSettings.MaxTitleLength + 1);
         var auction = ScaffoldAuction(title, "Lorem ipsum sit dolor amet", null);
-    
+
         Assert.That(async () => await AuctionService.CreateAuction(auction, new List<IFormFile>()), Throws.InvalidOperationException);
     }
 
@@ -46,7 +46,7 @@ public class AuctionTests
         // Builds a string that is exactly 1 character longer than the max length.
         var description = new string('A', AuctionServiceSettings.MaxDescriptionLength + 1);
         var auction = ScaffoldAuction("Lorem ipsum sit dolor amet", description, null);
-    
+
         Assert.That(async () => await AuctionService.CreateAuction(auction, new List<IFormFile>()), Throws.InvalidOperationException);
     }
 
@@ -55,7 +55,7 @@ public class AuctionTests
     public void CreateAuction_InvalidMinimumBid_ThrowsException(double minimumBid)
     {
         var auction = ScaffoldAuction("Lorem ipsum sit dolor amet", "Lorem ipsum sit dolor amet", minimumBid);
-        
+
         Assert.That(async () => await AuctionService.CreateAuction(auction, new List<IFormFile>()), Throws.InvalidOperationException);
     }
 
@@ -72,10 +72,10 @@ public class AuctionTests
             var newImage = new Mock<IFormFile>();
             images.Add(newImage.Object);
         }
-        
+
         Assert.That(async () => await AuctionService.CreateAuction(auction, images), Throws.InvalidOperationException);
     }
-    
+
     [Test]
     public void CreateAuction_TooLargeImageFile_ThrowsException()
     {
@@ -87,7 +87,7 @@ public class AuctionTests
             .Setup(image => image.Length)
             .Returns((AuctionServiceSettings.MaxMegabytesPerImage + 1) * 1024 * 1024);
         images.Add(tooLargeImage.Object);
-        
+
         Assert.That(async () => await AuctionService.CreateAuction(auction, images), Throws.InvalidOperationException);
     }
 
@@ -107,9 +107,9 @@ public class AuctionTests
         invalidFile
             .Setup(image => image.FileName)
             .Returns(fileName);
-        
+
         images.Add(invalidFile.Object);
-        
+
         Assert.That(async () => await AuctionService.CreateAuction(auction, images), Throws.InvalidOperationException);
     }
 
@@ -124,7 +124,7 @@ public class AuctionTests
         validFile.Setup(image => image.FileName).Returns("HelloWorld.jpg");
 
         images.Add(validFile.Object);
-    
+
         // Assert that no exception is thrown
         Assert.DoesNotThrowAsync(async () => await AuctionService.CreateAuction(auction, images));
     }
@@ -189,7 +189,7 @@ public class AuctionTests
         };
         Assert.That(async () => await AuctionService.PlaceBid(newBid), Throws.InvalidOperationException);
     }
-    
+
     // Method used to quickly scaffold a new auction
     private static Auction ScaffoldAuction(string title, string description, double? minimumBid)
     {

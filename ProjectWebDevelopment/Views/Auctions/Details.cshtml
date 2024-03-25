@@ -39,7 +39,7 @@
                 <a asp-action="Index">< Terug </a>
             </div>
 
-            <h1>@Html.DisplayFor(model => Model.Auction.Title)</h1>
+            <h1 data-cy="page-title">@Html.DisplayFor(model => Model.Auction.Title)</h1>
             <small>Aangeboden door <strong>@Html.DisplayFor(modelItem => Model.Auction.Seller.FirstName)</strong></small>
 
             <p class="mt-3 mb-5">
@@ -64,8 +64,8 @@
             </div>
 
             <div class="my-5">
-                @if (User.IsInRole("Seller"))
-                {
+                @{
+                if (User.Claims.FirstOrDefault(c => c.Type == "AuctionCreator" && c.Value == Model.Auction.Id.ToString()) != null) {
                     <h2 class="h3">Veiling bewerken</h2>
                     <div class="row">
                         <div class="col">
@@ -98,6 +98,7 @@
                     <h2 class="h3">Bod plaatsen</h2>
                     <p>Om een bod te kunnen plaatsen, moet je eerst ingelogd zijn.</p>
                     <a class="btn btn-primary" asp-area="Identity" asp-page="/Account/Login">Inloggen</a>
+                }
                 }
             </div>
         </div>

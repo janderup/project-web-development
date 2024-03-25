@@ -1,14 +1,14 @@
 using ProjectWebDevelopment.Data.Entities;
 using ProjectWebDevelopment.Services;
 
-namespace ProjectWebDevelopment_Tests;
+namespace ProjectWebDevelopment_Tests.Unit;
 
 public class MemoryRepository : IAuctionRepository
 {
     private readonly List<Auction> _auctions = new();
 
     private readonly List<Bid> _bids = new();
-    
+
     public Task<IEnumerable<Auction>> GetAuctions()
     {
         return Task.FromResult<IEnumerable<Auction>>(_auctions);
@@ -25,7 +25,7 @@ public class MemoryRepository : IAuctionRepository
         var nextAutoIncrement = _auctions.Any() ? _auctions.Max(a => a.Id) + 1 : 1;
         auction.Id = nextAutoIncrement;
         _auctions.Add(auction);
-        
+
         return Task.FromResult(nextAutoIncrement);
     }
 
@@ -45,7 +45,7 @@ public class MemoryRepository : IAuctionRepository
         var indexOf = _auctions.FindIndex(a => a.Id == id);
         if (indexOf == -1)
             return Task.FromResult(0);
-        
+
         _auctions.RemoveAt(indexOf);
         return Task.FromResult(1);
     }
@@ -72,17 +72,17 @@ public class MemoryRepository : IAuctionRepository
         var nextAutoIncrement = _bids.Any() ? _bids.Max(b => b.Id) + 1 : 1;
         bid.Id = nextAutoIncrement;
         _bids.Add(bid);
-        
+
         return Task.FromResult(nextAutoIncrement);
     }
 
     public Task<int> DeleteBid(int id)
     {
         var indexOf = _bids.FindIndex(bid => bid.Id == id);
-        
+
         if (indexOf == -1)
             return Task.FromResult(0);
-        
+
         _bids.RemoveAt(indexOf);
         return Task.FromResult(1);
     }
