@@ -13,14 +13,14 @@ namespace ProjectWebDevelopment.Services
 
         private IAuctionImageProcessor ImageProcessor { get; }
 
-        private IHubContext<AuctionHub> HubContext { get; }
+        private IHubContext<AuctionHub>? HubContext { get; }
 
         private UserManager<AuctionUser> UserManager { get; }
 
         public AuctionService(
             IAuctionRepository repository,
             IAuctionImageProcessor imageProcessor,
-            IHubContext<AuctionHub> hubContext,
+            IHubContext<AuctionHub>? hubContext,
             UserManager<AuctionUser> userManager
             )
         {
@@ -40,7 +40,7 @@ namespace ProjectWebDevelopment.Services
             return await Repository.GetAuctionById(id);
         }
 
-        public async Task CreateAuction(Auction auction, IEnumerable<IFormFile> images)
+        public async Task<int> CreateAuction(Auction auction, IEnumerable<IFormFile> images)
         {
             // Validate the maximum length of an auction title
             if (auction.Title.Length > AuctionServiceSettings.MaxTitleLength)
@@ -78,7 +78,7 @@ namespace ProjectWebDevelopment.Services
             }
 
             var imageSources = imageList.Select(imageSource => ImageProcessor.ProcessUploadedImage(imageSource));
-            await Repository.CreateAuction(auction, imageSources);
+            return await Repository.CreateAuction(auction, imageSources);
         }
 
         public async Task UpdateAuction(Auction auction)
@@ -106,8 +106,8 @@ namespace ProjectWebDevelopment.Services
 
         public async Task PlaceBid(Bid bid)
         {
-            if (bid.Price < 0)
-                throw new InvalidOperationException("The bid may not be lower than &euro; 0.");
+            if (bid.Price <= 0)
+                throw new InvalidOperationException("The bid may not be lower than or equal to &euro; 0.");
 
             var auction = await Repository.GetAuctionById(bid.AuctionId) 
                 ?? throw new InvalidOperationException("The auction ID is invalid. The auction does not exist.");
@@ -125,7 +125,9 @@ namespace ProjectWebDevelopment.Services
             }
 
             await Repository.CreateBid(bid);
-            await NotifyAuctionHub(bid);
+
+            if (HubContext != null)
+                await NotifyAuctionHub(bid);
         }
 
         public async Task NotifyAuctionHub(Bid bid)
