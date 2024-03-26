@@ -16,6 +16,8 @@ public class AuctionTests
 
     private Mock<UserManager<AuctionUser>> UserManagerMock { get; set; }
 
+    private Mock<IAuctionMailer> MailerMock { get; set; }
+
     private AuctionService AuctionService { get; set; }
 
     [SetUp]
@@ -26,8 +28,14 @@ public class AuctionTests
         ImageProcessorMock
             .Setup(processor => processor.ProcessUploadedImage(It.IsAny<IFormFile>()))
             .Returns((IFormFile file) => file.FileName);
+        MailerMock = new Mock<IAuctionMailer>();
+        MailerMock.Setup(mailer => mailer.SendOutbidNotification(It.IsAny<Auction>(), It.IsAny<Bid>(), It.IsAny<Bid>()))
+            .Callback<Auction, Bid, Bid>((auction, highestBid, newHighestBid) =>
+            {
+                Console.WriteLine($"SendOutbidNotification called with Auction: {auction}, Highest Bid: {highestBid}, New Highest Bid: {newHighestBid}");
+            });
         // UserManagerMock = new Mock<UserManager<AuctionUser>>();
-        AuctionService = new AuctionService(Repository, ImageProcessorMock.Object, null, null);
+        AuctionService = new AuctionService(Repository, ImageProcessorMock.Object, MailerMock.Object, null, null);
     }
 
     [Test]

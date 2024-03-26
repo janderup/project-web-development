@@ -13,6 +13,8 @@ namespace ProjectWebDevelopment.Services
 
         private IAuctionImageProcessor ImageProcessor { get; }
 
+        private IAuctionMailer AuctionMailer { get; }
+
         private IHubContext<AuctionHub>? HubContext { get; }
 
         private UserManager<AuctionUser> UserManager { get; }
@@ -20,12 +22,14 @@ namespace ProjectWebDevelopment.Services
         public AuctionService(
             IAuctionRepository repository,
             IAuctionImageProcessor imageProcessor,
+            IAuctionMailer auctionMailer,
             IHubContext<AuctionHub>? hubContext,
             UserManager<AuctionUser> userManager
             )
         {
             Repository = repository;
             ImageProcessor = imageProcessor;
+            AuctionMailer = auctionMailer;
             HubContext = hubContext;
             UserManager = userManager;
         }
@@ -141,17 +145,17 @@ namespace ProjectWebDevelopment.Services
 
             var bids = await Repository.GetBids(bid.AuctionId);
 
-            if (bids.Any())
-            {
-                var highestBidPrice = bids.Max(b => b.Price);
-                if (bid.Price <= highestBidPrice)
-                    throw new InvalidOperationException("Het bod moet hoger zijn dan het huidige hoogste bod.");
-            }
+            var highestBid = bids.OrderByDescending(b => b.Price).FirstOrDefault();
+
+            if (highestBid != null && bid.Price <= highestBid.Price)
+                throw new InvalidOperationException("Het bod moet hoger zijn dan het huidige hoogste bod."); ;
 
             await Repository.CreateBid(bid);
 
             if (HubContext != null)
                 await NotifyAuctionHub(bid);
+
+            AuctionMailer.SendOutbidNotification(auction, highestBid, bid);
         }
 
         // Returns the next minimum bid that is accepted for this auction.

@@ -17,8 +17,18 @@ builder.Services.AddDefaultIdentity<AuctionUser>(options => options.SignIn.Requi
     .AddEntityFrameworkStores<ApplicationDbContext>();
 builder.Services.AddControllersWithViews();
 
+DotNetEnv.Env.Load();
+
 builder.Services.AddScoped<IAuctionImageProcessor, Base64AuctionImageProcessor>();
 builder.Services.AddScoped<IAuctionRepository, AuctionRepositoryEF>();
+builder.Services.AddScoped<IAuctionMailer>(provider =>
+{
+    var smtpHost = Environment.GetEnvironmentVariable("MAILER_HOST");
+    var smtpUser = Environment.GetEnvironmentVariable("MAILER_USERNAME");
+    var smtpPass = Environment.GetEnvironmentVariable("MAILER_PASSWORD");
+
+    return new AuctionMailer(smtpHost, smtpUser, smtpPass);
+});
 builder.Services.AddScoped<AuctionService, AuctionService>();
 
 builder.Services.AddSignalR();
