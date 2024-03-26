@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using ProjectWebDevelopment.Data;
 using ProjectWebDevelopment.Data.Entities;
 using ProjectWebDevelopment.Models;
@@ -246,8 +247,13 @@ namespace ProjectWebDevelopment.Controllers
         [HttpPost, ActionName("PlaceBid")]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Buyer")]
-        public async Task<IActionResult> PlaceBid(int id, [Bind("price")] double price)
+        public async Task<IActionResult> PlaceBid(int id, [Bind("price")] double price, [Bind("name")] string? name)
         {
+            if (!string.IsNullOrEmpty(name))
+            {
+                return BadRequest("Captcha failed.");
+            }
+
             var bid = new Bid()
             {
                 BuyerId = _userManager.GetUserId(this.User),
