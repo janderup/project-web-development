@@ -1,4 +1,5 @@
 ﻿@using Microsoft.EntityFrameworkCore.Metadata.Internal
+@using ProjectWebDevelopment.Services
 @model ProjectWebDevelopment.Models.AuctionDetailsViewModel
 
 @{
@@ -61,7 +62,7 @@
                 <ol class="list-unstyled" id="auctionBids" data-cy="list-of-bids">
                     @if(Model.Auction.Bids != null)
                     {
-                        @foreach (var bid in Model.Auction.Bids)
+                        @foreach (var bid in Model.Auction.Bids.Take(AuctionServiceSettings.NumberOfBidsShownPerAuction))
                         {
                             <li><auction-bid name="@($"{bid?.Buyer?.FirstName} {bid?.Buyer?.LastName}")" price="@bid?.Price"></auction-bid></li>
                         }
@@ -71,19 +72,24 @@
 
             <div class="my-5">
                 @{
-                if (User.Claims.FirstOrDefault(c => c.Type == "AuctionCreator" && c.Value == Model.Auction.Id.ToString()) != null) {
-                    <h2 class="h3">Veiling bewerken</h2>
-                    <div class="row">
-                        <div class="col">
-                            <a asp-action="Edit" asp-route-id="@Model?.Auction.Id" class="btn btn-primary btn-block w-100">Veiling bewerken</a>
+                    if (User.Claims.FirstOrDefault(c => c.Type == "AuctionCreator" && c.Value == Model.Auction.Id.ToString()) != null)
+                    {
+                        <h2 class="h3">Veiling bewerken</h2>
+                        <div class="row">
+                            <div class="col">
+                                <a asp-action="Edit" asp-route-id="@Model?.Auction.Id" class="btn btn-primary btn-block w-100">Veiling bewerken</a>
+                            </div>
+                            <div class="col">
+                                @if (Model.CanAuctionBeCancelled)
+                                {
+                                    <a asp-action="Delete" asp-route-id="@Model?.Auction.Id" class="btn btn-secondary btn-block w-100">Veiling annuleren</a>
+                                }
+                            </div>
                         </div>
-                        <div class="col">
-                            @if (Model.CanAuctionBeCancelled)
-                            {
-                                <a asp-action="Delete" asp-route-id="@Model?.Auction.Id" class="btn btn-secondary btn-block w-100">Veiling annuleren</a>
-                            }
-                        </div>
-                    </div>
+
+                } else if (Model.Auction.HasEnded()) {
+                    <h2 class="h3">Bod plaatsen</h2>
+                    <p>Deze veiling is al afgelopen. Je kunt hier geen bod meer plaatsen.</p>
 
                 } else if (User.IsInRole("Buyer")) 
                 {
@@ -98,10 +104,11 @@
                                     <div class="input-group">
                                         <span class="input-group-text" id="bidAddon">&euro;</span>
                                         <input type="number"
-                                               min="0.01"
+                                               min="@Html.DisplayFor(model => model.NextMinimumBid)"
                                                step="0.01"
                                                name="price"
                                                class="form-control"
+                                               id="minimumBidInput"
                                                aria-label="Bedrag"
                                                aria-describedby="bidAddon">
                                     </div>

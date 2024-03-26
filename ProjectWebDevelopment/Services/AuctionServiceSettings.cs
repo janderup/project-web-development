@@ -27,4 +27,7 @@ public static class AuctionServiceSettings
 
     // Allowed file extensions for the images.
     public static readonly HashSet<string> AllowedFileExtensions = new HashSet<string> { ".jpg", ".jpeg", ".png" };
+
+    // The number of bids shown on the auction details page
+    public const int NumberOfBidsShownPerAuction = 5;
 }
