@@ -47,6 +47,11 @@ namespace ProjectWebDevelopment.Data
                 .HasOne(image => image.Auction)
                 .WithMany(auctionItem => auctionItem.Images)
                 .HasForeignKey(image => image.AuctionId);
+
+            modelBuilder.Entity<IdentityRole>().HasData(
+                new IdentityRole { Id = Guid.NewGuid().ToString(), Name = "Seller", NormalizedName = "SELLER" },
+                new IdentityRole { Id = Guid.NewGuid().ToString(), Name = "Buyer", NormalizedName = "BUYER" }
+            );
         }
     }
 }
