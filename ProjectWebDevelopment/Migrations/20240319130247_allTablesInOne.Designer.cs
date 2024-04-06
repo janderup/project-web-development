@@ -11,7 +11,7 @@ using ProjectWebDevelopment.Data;
 namespace ProjectWebDevelopment.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20240315140055_allTablesInOne")]
+    [Migration("20240319130247_allTablesInOne")]
     partial class allTablesInOne
     {
         /// <inheritdoc />
@@ -206,6 +206,14 @@ namespace ProjectWebDevelopment.Migrations
 
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("INTEGER");

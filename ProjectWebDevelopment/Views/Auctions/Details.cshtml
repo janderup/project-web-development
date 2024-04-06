@@ -1,4 +1,6 @@
-﻿@model ProjectWebDevelopment.Models.AuctionDetailsViewModel
+﻿@using Microsoft.EntityFrameworkCore.Metadata.Internal
+@using ProjectWebDevelopment.Services
+@model ProjectWebDevelopment.Models.AuctionDetailsViewModel
 
 @{
     ViewData["Title"] = "Details";
@@ -9,9 +11,9 @@
 }
 
 <section class="py-5">
-    <div class="row">
+    <div class="row gap-4">
         <div class="col-lg">
-            <div id="auctionCarouselControls" class="carousel slide" data-bs-ride="carousel">
+            <div id="auctionCarouselControls" class="carousel slide" data-bs-ride="carousel" data-cy="auction-images">
                 <div class="carousel-inner">
                     @if (Model.Auction.Images != null)
                     {
@@ -23,37 +25,121 @@
                         }
                     }
                 </div>
-                <button class="carousel-control-prev" type="button" data-bs-target="#auctionCarouselControls" data-bs-slide="prev">
-                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                    <span class="visually-hidden">Vorige</span>
-                </button>
-                <button class="carousel-control-next" type="button" data-bs-target="#auctionCarouselControls" data-bs-slide="next">
-                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                    <span class="visually-hidden">Volgende</span>
-                </button>
+                @if (Model.Auction.Images != null && Model.Auction.Images.Count > 1)
+                {
+                    <button class="carousel-control-prev" type="button" data-bs-target="#auctionCarouselControls" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Vorige</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#auctionCarouselControls" data-bs-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Volgende</span>
+                    </button>
+                }
             </div>
         </div>
         <div class="col-lg">
             <div>
-                <a asp-action="Edit" asp-route-id="@Model?.Auction.Id">Edit</a> |
-                <a asp-action="Index">Back to List</a>
+                <a asp-action="Index">< Terug </a>
             </div>
 
-            <h1>@Html.DisplayFor(model => Model.Auction.Title)</h1>
-            <small>Aangeboden door <strong>@Html.DisplayFor(modelItem => Model.Auction.Seller.UserName)</strong></small>
+            <h1 data-cy="page-title">@Html.DisplayFor(model => Model.Auction.Title)</h1>
+            <small>Aangeboden door <strong>@Html.DisplayFor(modelItem => Model.Auction.Seller.FirstName)</strong></small>
 
-            <p class="my-3">@Html.DisplayFor(model => Model.Auction.Description)</p>
+            <p class="mt-3 mb-5" data-cy="auction-description">
+                @Html.DisplayFor(model => Model.Auction.Description)
+            </p>
 
-            <div class="auction-countdown-wrapper">
-                <h2>Veiling sluit over</h2>
+            <div class="auction-countdown-wrapper my-5">
+                <h2 class="h3">Veiling sluit over</h2>
                 <div class="bg-light d-inline-block py-2 px-5 rounded">
-                    <auction-countdown end-date="@Html.DisplayFor(modelItem => Model.Auction.EndDate)"></auction-countdown>
+                    <auction-countdown end-date="@Html.DisplayFor(modelItem => Model.Auction.EndDate)" data-cy="auction-countdown"></auction-countdown>
                 </div>
+            </div>
+
+            <div class="current-biddings-wrapper my-5">
+                <h2 class="h3">Huidige biedingen</h2>
+                <ol class="list-unstyled" id="auctionBids" data-cy="list-of-bids">
+                    @if(Model.Auction.Bids != null)
+                    {
+                        @foreach (var bid in Model.Auction.Bids.Take(AuctionServiceSettings.NumberOfBidsShownPerAuction))
+                        {
+                            <li><auction-bid name="@($"{bid?.Buyer?.FirstName} {bid?.Buyer?.LastName}")" price="@bid?.Price"></auction-bid></li>
+                        }
+                    }
+                </ol>
+            </div>
+
+            <div class="my-5">
+                @{
+                    if (User.Claims.FirstOrDefault(c => c.Type == "AuctionCreator" && c.Value == Model.Auction.Id.ToString()) != null)
+                    {
+                        <h2 class="h3">Veiling bewerken</h2>
+                        <div class="row">
+                            <div class="col">
+                                <a asp-action="Edit" asp-route-id="@Model?.Auction.Id" class="btn btn-primary btn-block w-100">Veiling bewerken</a>
+                            </div>
+                            <div class="col">
+                                @if (Model.CanAuctionBeCancelled)
+                                {
+                                    <a asp-action="Delete" asp-route-id="@Model?.Auction.Id" class="btn btn-secondary btn-block w-100">Veiling annuleren</a>
+                                }
+                            </div>
+                        </div>
+
+                } else if (Model.Auction.HasEnded()) {
+                    <h2 class="h3">Bod plaatsen</h2>
+                    <p>Deze veiling is al afgelopen. Je kunt hier geen bod meer plaatsen.</p>
+
+                } else if (User.IsInRole("Buyer")) 
+                {
+                    <h2 class="h3">Bod plaatsen</h2>
+                        <form asp-action="PlaceBid" asp-route-id="@Model?.Auction.Id">
+                            @if (TempData["ErrorMessage"] != null)
+                            {
+                                <div class="alert alert-danger" role="alert">@TempData["ErrorMessage"]</div>
+                            }
+                            <div class="row">
+                                <div class="col">
+                                    <div class="input-group">
+                                        <span class="input-group-text" id="bidAddon">&euro;</span>
+                                        <input type="number"
+                                               min="@Html.DisplayFor(model => model.NextMinimumBid)"
+                                               step="0.01"
+                                               name="price"
+                                               class="form-control"
+                                               id="minimumBidInput"
+                                               aria-label="Bedrag"
+                                               aria-describedby="bidAddon">
+                                    </div>
+
+                                    <div style="display:none;">
+                                        <label for="name">Laat dit veld leeg:</label>
+                                        <input type="text" id="name" name="name" />
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <button class="btn btn-primary w-100">Plaats bod</button>
+                                </div>
+                            </div>
+                        </form>
+
+                    <small>Bied minimaal &euro; <span id="minimimBid">@Html.DisplayFor(model => model.NextMinimumBid)</span></small>
+                } else
+                {
+                    <h2 class="h3">Bod plaatsen</h2>
+                    <p>Om een bod te kunnen plaatsen, moet je eerst ingelogd zijn.</p>
+                    <a class="btn btn-primary" asp-area="Identity" asp-page="/Account/Login">Inloggen</a>
+                }
+                }
             </div>
         </div>
     </div>
 </section>
 
 @section Scripts {
-    <script src="~/js/elements/auction-countdown.js"></script>
+    <script >
+        window.auctionId = @Model?.Auction.Id;
+    </script>
+    <script src="~/js/auction-details.js" type="module"></script>
 }

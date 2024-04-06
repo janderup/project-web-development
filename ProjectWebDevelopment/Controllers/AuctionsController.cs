@@ -1,12 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using ProjectWebDevelopment.Data;
 using ProjectWebDevelopment.Data.Entities;
 using ProjectWebDevelopment.Models;
@@ -16,34 +19,27 @@ namespace ProjectWebDevelopment.Controllers
 {
     public class AuctionsController : Controller
     {
-        private readonly ApplicationDbContext _context;
-
         private readonly SignInManager<AuctionUser> _signInManager;
 
         private readonly UserManager<AuctionUser> _userManager;
 
-        private readonly IAuctionImageProcessor _imageProcessor;
+        private readonly AuctionService _auctionService;
 
         public AuctionsController(
-            ApplicationDbContext context, 
             SignInManager<AuctionUser> signInManager,
             UserManager<AuctionUser> userManager, 
-            IAuctionImageProcessor imageProcessor
+            AuctionService auctionService
             )
         {
-            _context = context;
             _signInManager = signInManager;
             _userManager = userManager;
-            _imageProcessor = imageProcessor;
+            _auctionService = auctionService;
         }
 
         public async Task<IActionResult> Index()
         {
-            var auctions = await _context.Auctions
-                .Include(a => a.Images)
-                .OrderByDescending(a => a.EndDate)
-                .ToListAsync();
-
+            var auctions = await _auctionService.GetAuctionsWithBids();
+            
             var auctionViewModels = auctions.Select(auction => new AuctionListItemViewModel
             {
                 Id = auction.Id,
@@ -67,25 +63,27 @@ namespace ProjectWebDevelopment.Controllers
                 return NotFound();
             }
 
-            var auction = await _context.Auctions
-                .Include(a => a.Seller)
-                .Include(a => a.Images)
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var auction = await _auctionService.GetAuctionByIdWithBids(id.Value);
+            
             if (auction == null)
             {
                 return NotFound();
             }
 
-            var detailsViewModel = new AuctionDetailsViewModel(auction, _signInManager);
+            var canBeCancelled = _auctionService.CanAuctionBeCancelled(auction);
+            var nextMinimumBid = _auctionService.GetNextMinimumBid(auction);
+
+            var detailsViewModel = new AuctionDetailsViewModel(auction, _signInManager, canBeCancelled, nextMinimumBid);
 
             return View(detailsViewModel);
         }
 
         // GET: Auctions/Create
+        [Authorize(Roles = "Seller")]
         public IActionResult Create()
         {
-            ViewData["SellerId"] = new SelectList(_context.Users, "Id", "Id");
-            return View();
+            var viewModel = new CreateAuctionViewModel();
+            return View(viewModel);
         }
 
         // POST: Auctions/Create
@@ -93,57 +91,50 @@ namespace ProjectWebDevelopment.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize]
-        public async Task<IActionResult> Create([Bind("EndDate,Title,Description,MinimumBid,Images,Id")] CreateAuctionViewModel auctionViewModel)
+        [Authorize(Roles = "Seller")]
+        public async Task<IActionResult> Create([Bind("AuctionDuration,Title,Description,MinimumBid,Images,Id")] CreateAuctionViewModel auctionViewModel)
         {
             if (ModelState.IsValid)
             {
-                using var transaction = _context.Database.BeginTransaction();
+                var endDate = DateTime.Now;
+                endDate = endDate.Add(auctionViewModel.AuctionDuration.ToTimeSpan());
+
+                var user = await _userManager.GetUserAsync(this.User);
+
+                Auction auction = new()
+                {
+                    StartDate = DateTime.Now,
+                    EndDate = endDate,
+                    Title = auctionViewModel.Title,
+                    Description = auctionViewModel.Description,
+                    MinimumBid = auctionViewModel.MinimumBid,
+                    SellerId = user.Id
+                };
 
                 try
                 {
-                    Auction auction = new()
-                    {
-                        StartDate = DateTime.Now,
-                        EndDate = auctionViewModel.EndDate,
-                        Title = auctionViewModel.Title,
-                        Description = auctionViewModel.Description,
-                        MinimumBid = auctionViewModel.MinimumBid,
-                        SellerId = _userManager.GetUserId(this.User)
-                    };
-                    _context.Add(auction);
+                    var auctionId = await _auctionService.CreateAuction(auction, auctionViewModel.Images);
 
-                    await _context.SaveChangesAsync();
+                    // Add claim for authentication
+                    var claim = new Claim("AuctionCreator", auctionId.ToString());
+                    await _userManager.AddClaimAsync(user, claim);
+                    await _signInManager.RefreshSignInAsync(user);
 
-                    if (auctionViewModel.Images != null)
-                    {
-                        foreach (var image in auctionViewModel.Images)
-                        {
-                            Image auctionImage = new()
-                            {
-                                Path = _imageProcessor.ProcessUploadedImage(image),
-                                AuctionId = auction.Id
-                            };
-                            _context.Add(auctionImage);
-                        }
-                    }
-
-                    await _context.SaveChangesAsync();
-                    await transaction.CommitAsync();
-                    
-                } catch  (Exception)
-                {
-                    await transaction.RollbackAsync();
-                    throw;
+                    return RedirectToAction(nameof(Index));
                 }
-
-                return RedirectToAction(nameof(Index));
+                catch (Exception ex)
+                {
+                    // Handle the exception here
+                    ModelState.AddModelError(string.Empty, ex.Message); // Add error message to ModelState
+                }
             }
-            ViewData["SellerId"] = new SelectList(_context.Users, "Id", "Id");
+
+            ViewData["SellerId"] = new SelectList(_userManager.Users, "Id", "Id");
             return View(auctionViewModel);
         }
 
         // GET: Auctions/Edit/5
+        [Authorize(Roles = "Seller")]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -151,12 +142,17 @@ namespace ProjectWebDevelopment.Controllers
                 return NotFound();
             }
 
-            var auction = await _context.Auctions.FindAsync(id);
+            if (User.Claims.FirstOrDefault(c => c.Type == "AuctionCreator" && c.Value == id.Value.ToString()) == null)
+            {
+                return Unauthorized();
+            }
+
+            var auction = await _auctionService.GetAuctionById(id.Value);
             if (auction == null)
             {
                 return NotFound();
             }
-            ViewData["SellerId"] = new SelectList(_context.Users, "Id", "Id", auction.SellerId);
+            ViewData["SellerId"] = new SelectList(_userManager.Users, "Id", "Id", auction.SellerId);
             return View(auction);
         }
 
@@ -172,12 +168,16 @@ namespace ProjectWebDevelopment.Controllers
                 return NotFound();
             }
 
+            if (User.Claims.FirstOrDefault(c => c.Type == "AuctionCreator" && c.Value == id.ToString()) == null)
+            {
+                return Unauthorized();
+            }
+
             if (ModelState.IsValid)
             {
                 try
                 {
-                    _context.Update(auction);
-                    await _context.SaveChangesAsync();
+                    await _auctionService.UpdateAuction(auction);
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -192,7 +192,7 @@ namespace ProjectWebDevelopment.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["SellerId"] = new SelectList(_context.Users, "Id", "Id", auction.SellerId);
+            ViewData["SellerId"] = new SelectList(_userManager.Users, "Id", "Id", auction.SellerId);
             return View(auction);
         }
 
@@ -204,12 +204,16 @@ namespace ProjectWebDevelopment.Controllers
                 return NotFound();
             }
 
-            var auction = await _context.Auctions
-                .Include(a => a.Seller)
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var auction = await _auctionService.GetAuctionById(id.Value);
+            
             if (auction == null)
             {
                 return NotFound();
+            }
+
+            if (User.Claims.FirstOrDefault(c => c.Type == "AuctionCreator" && c.Value == id.Value.ToString()) == null) 
+            {
+                return Unauthorized();
             }
 
             return View(auction);
@@ -220,19 +224,54 @@ namespace ProjectWebDevelopment.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var auction = await _context.Auctions.FindAsync(id);
-            if (auction != null)
+            if (User.Claims.FirstOrDefault(c => c.Type == "AuctionCreator" && c.Value == id.ToString()) == null)
             {
-                _context.Auctions.Remove(auction);
+                return Unauthorized();
             }
 
-            await _context.SaveChangesAsync();
+            var auction = await _auctionService.GetAuctionById(id);
+            
+            if (auction != null)
+            {
+                await _auctionService.DeleteAuction(auction);
+            }
+            
             return RedirectToAction(nameof(Index));
         }
 
         private bool AuctionExists(int id)
         {
-            return _context.Auctions.Any(e => e.Id == id);
+            return _auctionService.AuctionExists(id);
+        }
+
+        [HttpPost, ActionName("PlaceBid")]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Buyer")]
+        public async Task<IActionResult> PlaceBid(int id, [Bind("price")] double price, [Bind("name")] string? name)
+        {
+            if (!string.IsNullOrEmpty(name))
+            {
+                return BadRequest("Captcha failed.");
+            }
+
+            var bid = new Bid()
+            {
+                BuyerId = _userManager.GetUserId(this.User),
+                Price = price,
+                Date = DateTime.Now,
+                AuctionId = id
+            };
+
+            try
+            {
+                await _auctionService.PlaceBid(bid);
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["ErrorMessage"] = ex.Message;
+            }
+
+            return RedirectToAction(nameof(Details), new { id = id });
         }
     }
 }

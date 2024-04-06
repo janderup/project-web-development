@@ -9,10 +9,20 @@ namespace ProjectWebDevelopment.Models
 
         public SignInManager<AuctionUser> SignInManager { get; set; }
 
-        public AuctionDetailsViewModel(Auction auction, SignInManager<AuctionUser> signInManager)
+        public bool CanAuctionBeCancelled { get; set; }
+
+        public double NextMinimumBid { get; set; }
+
+        public AuctionDetailsViewModel(
+            Auction auction, SignInManager<AuctionUser> signInManager, 
+            bool canAuctionBeCancelled, 
+            double nextMinimumBid
+            )
         {
             this.Auction = auction;
             this.SignInManager = signInManager;
+            this.CanAuctionBeCancelled = canAuctionBeCancelled;
+            this.NextMinimumBid = nextMinimumBid;
         }
     }
 }

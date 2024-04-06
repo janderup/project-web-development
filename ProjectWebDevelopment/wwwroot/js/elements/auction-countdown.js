@@ -1,4 +1,4 @@
-class AuctionCountdown extends HTMLElement {
+export class AuctionCountdown extends HTMLElement {
 
     constructor() {
         super();

@@ -13,10 +13,36 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddDefaultIdentity<AuctionUser>(options => options.SignIn.RequireConfirmedAccount = true)
+    .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
+
+builder.Services.Configure<IdentityOptions>(options =>
+{
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireNonAlphanumeric = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequiredLength = 12;
+    options.Password.RequiredUniqueChars = 1;
+});
+
 builder.Services.AddControllersWithViews();
 
-builder.Services.AddSingleton<IAuctionImageProcessor, Base64AuctionImageProcessor>();
+DotNetEnv.Env.Load();
+
+builder.Services.AddScoped<IAuctionImageProcessor, Base64AuctionImageProcessor>();
+builder.Services.AddScoped<IAuctionRepository, AuctionRepositoryEF>();
+builder.Services.AddScoped<IAuctionMailer>(provider =>
+{
+    var smtpHost = Environment.GetEnvironmentVariable("MAILER_HOST");
+    var smtpUser = Environment.GetEnvironmentVariable("MAILER_USERNAME");
+    var smtpPass = Environment.GetEnvironmentVariable("MAILER_PASSWORD");
+
+    return new AuctionMailer(smtpHost, smtpUser, smtpPass);
+});
+builder.Services.AddScoped<AuctionService, AuctionService>();
+
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
@@ -36,6 +62,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+app.MapHub<AuctionHub>("/auctionhub");
 
 app.UseAuthorization();
 

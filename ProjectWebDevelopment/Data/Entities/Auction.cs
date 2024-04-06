@@ -22,5 +22,9 @@ namespace ProjectWebDevelopment.Data.Entities
 
         public AuctionUser? Seller { get; set; }
 
+        public bool HasEnded()
+        {
+            return DateTime.Now > EndDate;
+        }
     }
 }

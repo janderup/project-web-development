@@ -8,52 +8,63 @@
     <link rel="stylesheet" href="~/css/create-auction.css" />
 }
 
-<h1>Create</h1>
-
-<h4>Auction</h4>
+<h1>Veiling aanmaken</h1>
 <hr />
 <div class="row">
     <div class="col-md-4">
         <form asp-action="Create" enctype="multipart/form-data">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <div class="form-group">
-                <label asp-for="EndDate" class="control-label"></label>
-                <input asp-for="EndDate" class="form-control" />
-                <span asp-validation-for="EndDate" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Title" class="control-label"></label>
+                <label asp-for="Title" class="control-label">Titel</label>
                 <input asp-for="Title" class="form-control" />
                 <span asp-validation-for="Title" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <label asp-for="Description" class="control-label"></label>
+                <label asp-for="Description" class="control-label">Beschrijving</label>
                 <textarea asp-for="Description" class="form-control"></textarea>
                 <span asp-validation-for="Description" class="text-danger"></span>
+                <span class="description">Maximaal 500 tekens.</span>
+            </div>
+            <div class="row">
+                <div class="col">
+                    <label for="auctionType" class="control-label">Type verkoop</label>
+                    <select id="auctionType" class="form-control">
+                        <option value="bidFrom">Bieden vanaf</option>
+                        <option value="noMinimum">Geen minimumprijs</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <div class="form-group">
+                        <label asp-for="MinimumBid" class="control-label">Minimumprijs</label>
+                        <input asp-for="MinimumBid" class="form-control" />
+                        <span asp-validation-for="MinimumBid" class="text-danger"></span>
+                    </div>
+                </div>
             </div>
             <div class="form-group">
-                <label asp-for="MinimumBid" class="control-label"></label>
-                <input asp-for="MinimumBid" class="form-control" />
-                <span asp-validation-for="MinimumBid" class="text-danger"></span>
+                <label asp-for="AuctionDuration" class="control-label">Hoe lang moet je veiling duren?</label>
+                <select asp-for="AuctionDuration" class="form-control" asp-items="Model.AuctionDurationOptions"></select>
+                <span asp-validation-for="AuctionDuration" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <label asp-for="Images"></label>
+                <label asp-for="Images">Afbeeldingen</label>
                 <input asp-for="Images" />
                 <span asp-validation-for="Images" class="text-danger"></span>
             </div>
             <div id="imagePreview"></div>
-            <div class="form-group">
-                <input type="submit" value="Create" class="btn btn-primary" />
+            <div class="row mt-3">
+                <div class="col">
+                    <input type="submit" value="Veiling starten" class="btn btn-primary w-100" />
+                </div>
+                <div class="col">
+                    <a asp-action="Index" class="btn btn-secondary w-100">Annuleren</a>
+                </div>
             </div>
         </form>
     </div>
 </div>
 
-<div>
-    <a asp-action="Index">Back to List</a>
-</div>
-
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
-    <script src="~/js/create-auction.js"></script>
+    <script src="~/js/create-auction.js" type="module"></script>
 }

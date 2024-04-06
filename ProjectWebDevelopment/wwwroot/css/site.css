@@ -1,3 +1,12 @@
+:root {
+    --bs-light: #ededed;
+    --bs-light-rgb: var(--bs-light);
+}
+
+.bg-light {
+    background: var(--bs-light)!important;
+}
+
 html {
   font-size: 14px;
 }
