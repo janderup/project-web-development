@@ -134,7 +134,7 @@ namespace ProjectWebDevelopment.Services
             if (bid.Price <= 0)
                 throw new InvalidOperationException("Het bod mag niet gelijk zijn of kleiner dan &euro; 0.");
 
-            var auction = await Repository.GetAuctionById(bid.AuctionId) 
+            var auction = await Repository.GetAuctionById(bid.AuctionId)
                 ?? throw new InvalidOperationException("Het veiling ID is ongeldig. De veiling bestaat niet.");
 
             if (bid.Price < auction.MinimumBid)
@@ -150,12 +150,15 @@ namespace ProjectWebDevelopment.Services
             if (highestBid != null && bid.Price <= highestBid.Price)
                 throw new InvalidOperationException("Het bod moet hoger zijn dan het huidige hoogste bod."); ;
 
+            
             await Repository.CreateBid(bid);
 
+            
             if (HubContext != null)
                 await NotifyAuctionHub(bid);
 
-            AuctionMailer.SendOutbidNotification(auction, highestBid, bid);
+            if (highestBid != null)
+                AuctionMailer.SendOutbidNotification(auction, highestBid, bid);
         }
 
         // Returns the next minimum bid that is accepted for this auction.
